@@ -7,18 +7,4 @@ It is used as the storage client in an `ObjectStore` instance (see the [ObjectSt
 It is a concrete subtype of `ObjectStores.ObjectStoreClient`.
 
 
-storage(:Object, :list, "abc123foozzz")
-
-storage(:Object, :insert, "abc123foozzz";
-    name="myobject",
-    data="here is some content",
-    content_type="text/plain"   # Need mime type
-)
-
-obs = storage(:Object, :list, "abc123foozzz")
-
-s = storage(:Object, :get, "abc123foozzz", "myobject");
-
-storage(:Object, :delete, "abc123foozzz", "myobject")
-
-storage(:Bucket, :delete, "abc123foozzz")
+__NOTE:__ Google Cloud Storage does not allow the creation of buckets within buckets. Buckets can contain only objects.

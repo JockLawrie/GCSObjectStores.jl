@@ -1,41 +1,43 @@
 module GCSObjectStores
 
+using Authorization
 using GoogleCloud
 using JSON
-
-using ObjectStores:  ObjectStoreClient
-using ObjectStores:  @add_required_fields_storageclient
-using Authorization: AbstractResource
-using Authorization: @add_required_fields_resource
+using ObjectStores
 
 
 ################################################################################
 # Types
 
-struct Bucket <: AbstractResource
-    @add_required_fields_resource  # id
-end
-
-struct Object <: AbstractResource
-    @add_required_fields_resource  # id
-end
-
-struct Client <: ObjectStoreClient
-    @add_required_fields_storageclient  # :bucket_type, :object_type
+struct GCSObjectStore <: ObjectStore
+    id::String;
+    id2permission::Dict{String, Permission};        # Resource ID => Permission
+    idpattern2permission::Dict{Regex, Permission};  # Resource ID pattern => Permission
+    type2permission::Dict{DataType, Permission};    # Resource type => Permission
+    rootbucketID::String                            # ID of root bucket
     storage::GoogleCloud.api.APIRoot
 
-    function Client(bucket_type, object_type, storage)
-        !(bucket_type == Bucket) && error("GCSObjectStores.bucket_type must be Bucket.")
-        !(object_type == Object) && error("GCSObjectStores.object_type must be Object.")
-        new(bucket_type, object_type, storage)
+    function GCSObjectStore(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
+        newstore = new(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
+        _isobject(newstore, rootbucketID) && error("Root already exists as an object. Cannot use it as a bucket.")
+        if !_isbucket(newstore, rootbucketID)  # Root does not exist...create it
+            msg = createbucket!(newstore)        # One arg implies bucketname is root
+            msg != nothing && @warn msg          # Couldn't create root bucket...warn
+        end
+        newstore
     end
 end
 
-function Client(filename::String)
+
+function GCSObjectStore(filename::String, rootbucketID::String)
+    id = ""
+    id2permission        = Dict{String, Permission}()
+    idpattern2permission = Dict{Regex,  Permission}()
+    type2permission      = Dict{DataType, Permission}()
     creds   = GoogleCloud.JSONCredentials(filename)
     session = GoogleSession(creds, ["devstorage.full_control"])
     set_session!(storage, session)
-    Client(Bucket, Object, storage)
+    GCSObjectStore(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
 end
 
 
@@ -43,9 +45,8 @@ end
 # Buckets
 
 "Create bucket. If successful return nothing, else return an error message as a String."
-function _create!(client::ObjectStore{GCSObjectStores.Client}, bucket::Bucket)
-    storage = client.storageclient.storage
-    res = storage(:Bucket, :insert; data=Dict(:name => bucket.id))
+function _create!(client::GCSObjectStore, bucket::Bucket)
+    res = client.storage(:Bucket, :insert; data=Dict(:name => bucket.id))
     if isempty(res)  # UInt8[]
         return "Bucket already exists. Cannot create it again."
     else
@@ -56,56 +57,38 @@ function _create!(client::ObjectStore{GCSObjectStores.Client}, bucket::Bucket)
             return ""
         end
     end
-#=
-    _isbucket(bucket.id) && return "Bucket already exists. Cannot create it again."
-    cb, bktname = splitdir(bucket.id)
-    !_isbucket(cb) && return "Cannot create bucket within a non-existent bucket."
-    try
-        mkdir(bucket.id)
-        return nothing
-    catch e
-        return e.prefix  # Assumes e is a SystemError
-    end
-=#
 end
 
 
 "Read bucket. If successful return (true, value), else return (false, errormessage::String)."
-function _read(client::ObjectStore{GCSObjectStores.Client}, bucket::Bucket)
-#=
-1. storage(:Bucket, :list; raw=true) returns addition information.
-2. Result is a Vector{UInt8} of almost-JSON...there are many newline characters
-=#
-#=
-bkts = storage(:Bucket, :list)  # Vector{UInt8}. List of all buckets for the project
-bkts = JSON.parse(replace(String(bkts), "\n" => ""))
-
-bkts["items"]
-bkt = bkts["items"][3]
-contents = storage(:Object, :list, bkt["name"])
-storage(:Bucket, :get, "jobs.h27n.tech")  # metadata for bucket "jobs.h27n.tech"
-=#
-    storage  = client.storageclient.storage
-    contents = storage(:Object, :list, bucket.id)
+function _read(client::GCSObjectStore, bucket::Bucket)
+    contents = try
+        client.storage(:Object, :list, bucket.id)
+    catch e
+        nothing
+    end
+    contents == nothing && return (false, "Bucket doesn't exist")
     contents = JSON.parse(replace(String(contents), "\n" => ""))
-    if haskey(contents, "items")
+    if isempty(contents)  # UInt8[]
+        return (false, "Bucket doesn't exist")
+    elseif haskey(contents, "items")
         return (true, [x["name"] for x in contents["items"]])
     else
-        return (false, "Bucket doesn't exist")
+        return (true, String[])  # Bucket is empty
     end
 end
 
 
 "Delete bucket. If successful return nothing, else return an error message as a String."
-function _delete!(client::ObjectStore{GCSObjectStores.Client}, bucket::Bucket)
-    ok, contents = _read(bucket)
-    contents == nothing && return "Resource is not a bucket. Cannot delete it with this function."
+function _delete!(client::GCSObjectStore, bucket::Bucket)
+    ok, contents = _read(client, bucket)
+    !ok && return "Resource is not a bucket. Cannot delete it with this function."
     !isempty(contents)  && return "Bucket is not empty. Cannot delete it."
     try
-        rm(bucket.id)
+        client.storage(:Bucket, :delete, bucket.id)
         return nothing
     catch e
-        return e.prefix  # Assumes e is a SystemError
+        return "$(e)"
     end
 end
 
@@ -113,40 +96,49 @@ end
 ################################################################################
 # Objects
 
-"Create object. If successful return nothing, else return an error message as a String."
-function _create!(client::ObjectStore{GCSObjectStores.Client}, object::Object, v)
+"""
+Create object. If successful return nothing, else return an error message as a String.
+
+v is either:
+- NamedTuple: (mimetype="application.json", value="some value")
+- An arbitrary value
+"""
+function _create!(client::GCSObjectStore, object::Object, v)
+    bucketname, objectname = splitdir(object.id)
+    mimetype, val = typeof(v) <: NamedTuple ? v[:mimetype], v[:value] : "application/json", v
     try
-        resourceid = object.id
-        _isbucket(resourceid) && return "$(resourceid) is a bucket, not an object"
-        cb, shortname = splitdir(resourceid)
-        !_isbucket(cb) && return "Cannot create object $(resourceid) inside a non-existent bucket."
-        write(object.id, v)
+        res = client.storage(:Object, :insert, bucketname;
+            name=objectname,
+            data=val,
+            content_type=mimetype
+        )
         return nothing
     catch e
-        return e.prefix  # Assumes e is a SystemError
+        return "Cannot create object $(object.id) inside a non-existent bucket."
     end
 end
 
 
 "Read object. If successful return (true, value), else return (false, errormessage::String)."
-function _read(client::ObjectStore{GCSObjectStores.Client}, object::Object)
-    !_isobject(object.id) && return (false, "Object ID does not refer to an existing object")
+function _read(client::GCSObjectStore, object::Object)
+    bucketname, objectname = splitdir(object.id)
     try
-        true, read(object.id)
+        val = client.storage(:Object, :get, bucketname, objectname)
+        return true, val
     catch e
-        return false, e.prefix  # Assumes e is a SystemError
+        return (false, "Object ID does not refer to an existing object")
     end
 end
 
 
 "Delete object. If successful return nothing, else return an error message as a String."
-function _delete!(client::ObjectStore{GCSObjectStores.Client}, object::Object)
-    !_isobject(object.id) && return "Object ID does not refer to an existing object. Cannot delete a non-existent object."
+function _delete!(client::GCSObjectStore, object::Object)
     try
-        rm(object.id)
+        bucketname, objectname = splitdir(object.id)
+        res = client.storage(:Object, :delete, bucketname, objectname)
         return nothing
     catch e
-        return e.prefix  # Assumes e is a SystemError
+        return "Object ID does not refer to an existing object. Cannot delete a non-existent object."
     end
 end
 
@@ -154,10 +146,24 @@ end
 ################################################################################
 # Conveniences
 
-_islocal(backend::Client) = false
+function _isbucket!(client::GCSObjectStore, resourceid::String)
+    try
+        res = client.storage(:Bucket, :get, resourceid)  # Bucket metadata
+        return true
+    catch e
+        return false
+    end
+end
 
-_isbucket(resourceid::String) = isdir(resourceid)
 
-_isobject(resourceid::String) = isfile(resourceid)
+function _isobject!(client::GCSObjectStore, resourceid::String)
+    try
+        bucketname, objectname = splitdir(resourceid)
+        res = client.storage(:Object, :get, bucketname, objectname)  # Bucket metadata
+        return true
+    catch e
+        return false
+    end
+end
 
 end # module
