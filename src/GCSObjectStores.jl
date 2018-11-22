@@ -1,9 +1,12 @@
 module GCSObjectStores
 
-using Authorization
+export GCSObjectStore
+
+using Reexport
+using Authorization  # TODO: Delete this line once Authorization is registered
 using GoogleCloud
 using JSON
-using ObjectStores
+@reexport using ObjectStores
 
 
 ################################################################################
@@ -18,24 +21,20 @@ struct GCSObjectStore <: ObjectStore
     storage::GoogleCloud.api.APIRoot
 
     function GCSObjectStore(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
-        newstore = new(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
-        _isobject(newstore, rootbucketID) && error("Root already exists as an object. Cannot use it as a bucket.")
-        if !_isbucket(newstore, rootbucketID)  # Root does not exist...create it
-            msg = createbucket!(newstore)        # One arg implies bucketname is root
-            msg != nothing && @warn msg          # Couldn't create root bucket...warn
-        end
-        newstore
+        rootbucketID != "" && error("GCSObjectStores do not have a configurable rootbucketID")
+        new(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
     end
 end
 
 
-function GCSObjectStore(filename::String, rootbucketID::String)
+function GCSObjectStore(filename::String)
     id = ""
-    id2permission        = Dict{String, Permission}()
-    idpattern2permission = Dict{Regex,  Permission}()
+    rootbucketID         = ""
+    id2permission        = Dict{String,   Permission}()
+    idpattern2permission = Dict{Regex,    Permission}()
     type2permission      = Dict{DataType, Permission}()
-    creds   = GoogleCloud.JSONCredentials(filename)
-    session = GoogleSession(creds, ["devstorage.full_control"])
+    creds                = GoogleCloud.JSONCredentials(filename)
+    session              = GoogleSession(creds, ["devstorage.full_control"])
     set_session!(storage, session)
     GCSObjectStore(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
 end
@@ -46,24 +45,29 @@ end
 
 "Create bucket. If successful return nothing, else return an error message as a String."
 function _create!(client::GCSObjectStore, bucket::Bucket)
-    res = client.storage(:Bucket, :insert; data=Dict(:name => bucket.id))
-    if isempty(res)  # UInt8[]
-        return "Bucket already exists. Cannot create it again."
-    else
+    occursin('.', bucket.id) && return "Invalid bucket name"
+    try
+        res = client.storage(:Bucket, :insert; data=Dict(:name => bucket.id))
         res = JSON.parse(replace(String(res), "\n" => ""))
         if haskey(res, "name") && res["name"] == bucket.id && haskey(res, "timeCreated")
             return nothing  # Success
         else
             return ""
         end
+    catch e
+        return "Either the bucket already exists (cannot create it again), or the bucket name is invalid."
     end
 end
 
 
-"Read bucket. If successful return (true, value), else return (false, errormessage::String)."
+"List the contents of a specific bucket. If successful return (true, value), else return (false, errormessage::String)."
 function _read(client::GCSObjectStore, bucket::Bucket)
     contents = try
-        client.storage(:Object, :list, bucket.id)
+        if bucket.id == ""
+            client.storage(:Bucket, :list)
+        else
+            client.storage(:Object, :list, bucket.id)
+        end
     catch e
         nothing
     end
@@ -105,7 +109,7 @@ v is either:
 """
 function _create!(client::GCSObjectStore, object::Object, v)
     bucketname, objectname = splitdir(object.id)
-    mimetype, val = typeof(v) <: NamedTuple ? v[:mimetype], v[:value] : "application/json", v
+    mimetype, val = typeof(v) <: NamedTuple ? (v[:mimetype], v[:value]) : ("application/json", v)
     try
         res = client.storage(:Object, :insert, bucketname;
             name=objectname,
@@ -146,7 +150,7 @@ end
 ################################################################################
 # Conveniences
 
-function _isbucket!(client::GCSObjectStore, resourceid::String)
+function _isbucket(client::GCSObjectStore, resourceid::String)
     try
         res = client.storage(:Bucket, :get, resourceid)  # Bucket metadata
         return true
@@ -156,7 +160,7 @@ function _isbucket!(client::GCSObjectStore, resourceid::String)
 end
 
 
-function _isobject!(client::GCSObjectStore, resourceid::String)
+function _isobject(client::GCSObjectStore, resourceid::String)
     try
         bucketname, objectname = splitdir(resourceid)
         res = client.storage(:Object, :get, bucketname, objectname)  # Bucket metadata

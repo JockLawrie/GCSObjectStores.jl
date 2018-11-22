@@ -1,11 +1,17 @@
+[[Authorization]]
+deps = ["Dates"]
+path = "/var/hro/repos/Authorization.jl/"
+uuid = "edb23f2a-d586-11e8-2b8a-1bcdb9b1bfed"
+version = "0.1.0"
+
 [[Base64]]
 uuid = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
 
 [[BinaryProvider]]
 deps = ["Libdl", "Pkg", "SHA", "Test"]
-git-tree-sha1 = "9930c1a6cd49d9fcd7218df6be417e6ae4f1468a"
+git-tree-sha1 = "055eb2690182ebc31087859c3dd8598371d3ef9e"
 uuid = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
-version = "0.5.2"
+version = "0.5.3"
 
 [[BufferedStreams]]
 deps = ["Compat", "Test"]
@@ -99,6 +105,12 @@ git-tree-sha1 = "c44b3470fa98705f9c12cb44ec9504de3af027ad"
 uuid = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 version = "0.2.0"
 
+[[ObjectStores]]
+deps = ["Authorization", "Logging"]
+path = "/var/hro/repos/ObjectStores.jl/"
+uuid = "e102f8c2-d0e1-11e8-0211-39155c3f0463"
+version = "0.2.0"
+
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -114,6 +126,12 @@ uuid = "3fa0cd96-eef1-5676-8a61-b3b8758bbffb"
 [[Random]]
 deps = ["Serialization"]
 uuid = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
+
+[[Reexport]]
+deps = ["Pkg"]
+git-tree-sha1 = "7b1d07f411bc8ddb7977ec7f377b97b158514fe0"
+uuid = "189a3867-3050-52da-a836-e630ba90ab69"
+version = "0.2.0"
 
 [[SHA]]
 uuid = "ea8e919c-243c-51af-8825-aaa63cd721ce"
