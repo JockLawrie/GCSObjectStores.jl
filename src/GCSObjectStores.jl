@@ -45,7 +45,8 @@ end
 
 "Create bucket. If successful return nothing, else return an error message as a String."
 function _create!(client::GCSObjectStore, bucket::Bucket)
-    occursin('.', bucket.id) && return "Invalid bucket name"
+    bucket.id == ""     && return "Invalid bucket name"
+    bucket.id[1] == '.' && return "Invalid bucket name"
     try
         res = client.storage(:Bucket, :insert; data=Dict(:name => bucket.id))
         res = JSON.parse(replace(String(res), "\n" => ""))
@@ -64,9 +65,9 @@ end
 function _read(client::GCSObjectStore, bucket::Bucket)
     contents = try
         if bucket.id == ""
-            client.storage(:Bucket, :list)
+            client.storage(:Bucket, :list)  # List buckets
         else
-            client.storage(:Object, :list, bucket.id)
+            client.storage(:Object, :list, bucket.id)  # List objects in bucket
         end
     catch e
         nothing
