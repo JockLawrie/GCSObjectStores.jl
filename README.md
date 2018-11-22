@@ -1,6 +1,6 @@
 # GCSObjectStores 
 
-This package defines an [ObjectStore]() that uses Google Cloud Storage as the storage back-end.
+This package defines an [ObjectStore](https://github.com/JockLawrie/ObjectStores.jl) that uses _Google Cloud Storage_ as the storage back-end.
 
 __NOTE:__
 
@@ -78,8 +78,8 @@ listcontents(store)   # A list of all buckets in the store
 createbucket!(store, "../abc123foo")  # Failed (returns error msg) because the bucket name is invalid
 createbucket!(store, "abc123foo")     # Success (returns nothing)
 listcontents(store)                   # The list of all buckets in the store now contains "abc123foo"
-createbucket!(store, "abc123foo")     # Failed (returns error msg) because the bucket already exists
 isbucket(store, "abc123foo")
+createbucket!(store, "abc123foo")     # Failed (returns error msg) because the bucket already exists
 
 # Object abc123foo/myobject
 store["abc123foo/myobject"] = "My first object" # Success (returns value)
