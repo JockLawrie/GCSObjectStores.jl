@@ -40,7 +40,7 @@ store["abc123foo/myobject"] = "My first object"  # No-op, store doesn't have cre
 isobject(store, "abc123foo/myobject")            # "abc123foo/myobject" doesn't exist
 
 # Add temporary create permission for objects in bucket abc123foo
-setpermission!(store, r"^abc123foo/*", Permission(true, true, true, true, expiry))
+setpermission!(store, r"^abc123foo/.*", Permission(true, true, true, true, expiry))
 store["abc123foo/myobject"] = "My object"
 isobject(store, "abc123foo/myobject")  # "abc123foo/myobject" now exists
 store["abc123foo/myobject"]
