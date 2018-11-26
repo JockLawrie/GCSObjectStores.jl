@@ -106,7 +106,7 @@ end
 Create object. If successful return nothing, else return an error message as a String.
 
 v is either:
-- NamedTuple: (mimetype="application.json", value="some value")
+- NamedTuple: (mimetype="application/json", value="some value")
 - An arbitrary value
 """
 function _create!(client::GCSObjectStore, object::Object, v)
