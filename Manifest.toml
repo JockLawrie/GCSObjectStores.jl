@@ -40,10 +40,8 @@ uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 [[GoogleCloud]]
 deps = ["Base64", "Dates", "HTTP", "JSON", "Libz", "Markdown", "MbedTLS", "MsgPack", "Printf", "Test"]
 git-tree-sha1 = "96a8c98805e3635f189c49903fffbad725e5de46"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaCloud/GoogleCloud.jl.git"
 uuid = "55e21f81-8b0a-565e-b5ad-6816892a5ee7"
-version = "0.7.1+"
+version = "0.8.0"
 
 [[HTTP]]
 deps = ["Base64", "Dates", "Distributed", "IniFile", "MbedTLS", "Sockets", "Test"]
