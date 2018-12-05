@@ -1,7 +1,7 @@
 [[Authorization]]
-deps = ["Dates"]
-path = "/var/hro/repos/Authorization.jl/"
-uuid = "edb23f2a-d586-11e8-2b8a-1bcdb9b1bfed"
+deps = ["Dates", "Test"]
+git-tree-sha1 = "e78620f3ae6e8dc5770fd56bb791481fb2dd2022"
+uuid = "b5147960-3063-5349-a9c3-a0b314d6952d"
 version = "0.1.0"
 
 [[Base64]]
@@ -104,10 +104,10 @@ uuid = "99f44e22-a591-53d1-9472-aa23ef4bd671"
 version = "0.2.0"
 
 [[ObjectStores]]
-deps = ["Authorization", "Logging"]
-path = "/var/hro/repos/ObjectStores.jl/"
-uuid = "e102f8c2-d0e1-11e8-0211-39155c3f0463"
-version = "0.2.0"
+deps = ["Authorization", "Logging", "Test"]
+git-tree-sha1 = "85fd0cf856a804f9f72f0efbfcc60a3ae3b5faca"
+uuid = "03c2b57b-fb4c-5576-ac09-ef0ca0563633"
+version = "0.3.0"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]

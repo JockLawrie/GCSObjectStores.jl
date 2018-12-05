@@ -3,7 +3,6 @@ module GCSObjectStores
 export GCSObjectStore
 
 using Reexport
-using Authorization  # TODO: Delete this line once Authorization is registered
 using GoogleCloud
 using JSON
 @reexport using ObjectStores
