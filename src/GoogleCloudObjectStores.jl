@@ -1,6 +1,6 @@
-module GCSObjectStores
+module GoogleCloudObjectStores
 
-export GCSObjectStore
+export GoogleCloudObjectStore
 
 using Reexport
 using GoogleCloud
@@ -11,7 +11,7 @@ using JSON
 ################################################################################
 # Types
 
-struct GCSObjectStore <: ObjectStore
+struct GoogleCloudObjectStore <: ObjectStore
     id::String;
     id2permission::Dict{String, Permission};        # Resource ID => Permission
     idpattern2permission::Dict{Regex, Permission};  # Resource ID pattern => Permission
@@ -19,14 +19,14 @@ struct GCSObjectStore <: ObjectStore
     rootbucketID::String                            # ID of root bucket
     storage::GoogleCloud.api.APIRoot
 
-    function GCSObjectStore(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
-        rootbucketID != "" && error("GCSObjectStores do not have a configurable rootbucketID")
+    function GoogleCloudObjectStore(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
+        rootbucketID != "" && error("GoogleCloudObjectStores do not have a configurable rootbucketID")
         new(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
     end
 end
 
 
-function GCSObjectStore(filename::String)
+function GoogleObjectStore(filename::String)
     id = ""
     rootbucketID         = ""
     id2permission        = Dict{String,   Permission}()
@@ -35,7 +35,7 @@ function GCSObjectStore(filename::String)
     creds                = GoogleCloud.JSONCredentials(filename)
     session              = GoogleSession(creds, ["devstorage.full_control"])
     set_session!(storage, session)
-    GCSObjectStore(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
+    GoogleObjectStore(id, id2permission, idpattern2permission, type2permission, rootbucketID, storage)
 end
 
 
@@ -43,7 +43,7 @@ end
 # Buckets
 
 "Create bucket. If successful return nothing, else return an error message as a String."
-function _create!(client::GCSObjectStore, bucket::Bucket)
+function _create!(client::GoogleCloudObjectStore, bucket::Bucket)
     bucket.id == ""           && return "Invalid bucket name"
     bucket.id[1] == '.'       && return "Invalid bucket name"
     occursin("..", bucket.id) && return "Invalid bucket name"
@@ -62,7 +62,7 @@ end
 
 
 "List the contents of a specific bucket. If successful return (true, value), else return (false, errormessage::String)."
-function _read(client::GCSObjectStore, bucket::Bucket)
+function _read(client::GoogleCloudObjectStore, bucket::Bucket)
     contents = try
         if bucket.id == ""
             client.storage(:Bucket, :list)  # List buckets
@@ -85,7 +85,7 @@ end
 
 
 "Delete bucket. If successful return nothing, else return an error message as a String."
-function _delete!(client::GCSObjectStore, bucket::Bucket)
+function _delete!(client::GoogleCloudObjectStore, bucket::Bucket)
     ok, contents = _read(client, bucket)
     !ok && return "Resource is not a bucket. Cannot delete it with this function."
     !isempty(contents)  && return "Bucket is not empty. Cannot delete it."
@@ -108,7 +108,7 @@ v is either:
 - NamedTuple: (mimetype="application/json", value="some value")
 - An arbitrary value
 """
-function _create!(client::GCSObjectStore, object::Object, v)
+function _create!(client::GoogleCloudObjectStore, object::Object, v)
     bucketname, objectname = splitdir(object.id)
     mimetype, val = typeof(v) <: NamedTuple ? (v[:mimetype], v[:value]) : ("application/json", v)
     try
@@ -125,7 +125,7 @@ end
 
 
 "Read object. If successful return (true, value), else return (false, errormessage::String)."
-function _read(client::GCSObjectStore, object::Object)
+function _read(client::GoogleCloudObjectStore, object::Object)
     bucketname, objectname = splitdir(object.id)
     try
         val = client.storage(:Object, :get, bucketname, objectname)
@@ -137,7 +137,7 @@ end
 
 
 "Delete object. If successful return nothing, else return an error message as a String."
-function _delete!(client::GCSObjectStore, object::Object)
+function _delete!(client::GoogleCloudObjectStore, object::Object)
     try
         bucketname, objectname = splitdir(object.id)
         res = client.storage(:Object, :delete, bucketname, objectname)
@@ -151,7 +151,7 @@ end
 ################################################################################
 # Conveniences
 
-function _isbucket(client::GCSObjectStore, resourceid::String)
+function _isbucket(client::GoogleCloudObjectStore, resourceid::String)
     try
         res = client.storage(:Bucket, :get, resourceid)  # Bucket metadata
         return true
@@ -161,7 +161,7 @@ function _isbucket(client::GCSObjectStore, resourceid::String)
 end
 
 
-function _isobject(client::GCSObjectStore, resourceid::String)
+function _isobject(client::GoogleCloudObjectStore, resourceid::String)
     try
         bucketname, objectname = splitdir(resourceid)
         res = client.storage(:Object, :get, bucketname, objectname)  # Bucket metadata

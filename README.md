@@ -1,11 +1,11 @@
-# GCSObjectStores 
+# GoogleCloudObjectStores
 
 This package defines an [ObjectStore](https://github.com/JockLawrie/ObjectStores.jl) that uses _Google Cloud Storage_ as the storage back-end.
 
 __NOTE:__
 
 1. Google Cloud Storage does not allow the creation of buckets within buckets; buckets can contain only objects.
-2. Therefore a `GCSObjectStore` does not allow specification of a root bucket.
+2. Therefore a `GoogleCloudObjectStore` does not allow specification of a root bucket.
 3. Bucket names must be unique across your Google Cloud Platform (GCP) project.
 4. Some bucket names are rejected by GCP anyway, such as "xxx".
 
@@ -14,10 +14,10 @@ __NOTE:__
 
 ```julia
 using Dates
-using GCSObjectStores
+using GoogleCloudObjectStores
 
 # Create store
-store = GCSObjectStore("my_gcs_credentials.json")
+store = GoogleCloudObjectStore("my_gcs_credentials.json")
 listcontents(store)   # Returns nothing. Store doesn't have read permission
 setpermission!(store, :bucket, Permission(false, true, false, false))  # cRud (read-only) permission for all buckets within the root bucket
 setpermission!(store, :object, Permission(false, true, false, false))  # cRud (read-only) permission for all objects within the root bucket
@@ -66,10 +66,10 @@ listcontents(store)
 ### Example 2: Bucket store with unrestricted read/create/delete permission on buckets and objects
 
 ```julia
-using GCSObjectStores
+using GoogleCloudObjectStores
 
 # Create store
-store = GCSObjectStore("my_gcs_credentials.json")
+store = GoogleCloudObjectStore("my_gcs_credentials.json")
 setpermission!(store, :bucket, Permission(true, true, true, true))
 setpermission!(store, :object, Permission(true, true, true, true))
 listcontents(store)   # A list of all buckets in the store
