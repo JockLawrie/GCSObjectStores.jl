@@ -10,7 +10,7 @@ __NOTE:__
 4. Some bucket names are rejected by GCP anyway, such as "xxx".
 
 
-### Example 1: Bucket store with read-only permission
+### Example 1: Object store with read-only permission
 
 ```julia
 using Dates
@@ -63,7 +63,7 @@ listcontents(store)
 ```
 
 
-### Example 2: Bucket store with unrestricted read/create/delete permission on buckets and objects
+### Example 2: Object store with unrestricted read/create/delete permission on buckets and objects
 
 ```julia
 using GoogleCloudObjectStores
